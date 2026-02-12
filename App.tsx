@@ -5,7 +5,7 @@ import {
   LayoutDashboard, LogOut, Home as HomeIcon, Menu, X
 } from 'lucide-react';
 import { UserRole, User, Kos, Booking, Advertisement, BankAccount, KosCategory, ChatMessage, CompanyInfo, Transaction, RoomType, PriceType, NewsItem, ShortVideo } from './types';
-import { INITIAL_ADS, BANK_LIST } from './constants';
+import { INITIAL_ADS, BANK_LIST, INITIAL_USERS } from './constants';
 import LandingPage from './pages/LandingPage';
 import SearchResults from './pages/SearchResults';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
@@ -14,6 +14,8 @@ import UserDashboard from './pages/UserDashboard';
 import LoginPage from './pages/LoginPage';
 import KosDetail from './pages/KosDetail';
 
+// --- DATA INITIALIZATION ---
+// This data serves as the "Seed" for our local database.
 const INITIAL_KOSES: Kos[] = [
   {
     id: 'k-1',
@@ -179,41 +181,50 @@ const Navbar: React.FC<{ user: User | null, logout: () => void, companyName: str
   );
 };
 
-const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(INITIAL_COMPANY);
-  const [ads, setAds] = useState<Advertisement[]>(INITIAL_ADS);
-  const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
-  const [shortVideos, setShortVideos] = useState<ShortVideo[]>(INITIAL_VIDEOS);
-  const [koses, setKoses] = useState<Kos[]>(INITIAL_KOSES);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(BANK_LIST);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  
-  const [users, setUsers] = useState<User[]>([
-    { id: 'sa-1', username: 'admcip', password: 'Cip.123', role: UserRole.SUPER_ADMIN, fullName: 'Admin Master Cip', email: 'admin@travelkozt.com', isVerified: true, ktp: '1234567890123456', phone: '08123456789', address: 'Jakarta', ktpPhoto: '', profilePhoto: '' },
-    { id: 'u-1', username: 'budi', password: 'user123', role: UserRole.ADMIN_KOS, fullName: 'Budi Santoso', email: 'budi@owner.com', isVerified: true, ktp: '3201234567890123', phone: '08123456788', address: 'Jakarta Selatan', ktpPhoto: 'https://picsum.photos/400/250?random=ktp-budi', profilePhoto: '', bankName: 'BCA', bankAccountNumber: '123456789' },
-    { id: 'u-2', username: 'ani', password: 'user123', role: UserRole.USER, fullName: 'Ani Wijaya', email: 'ani@tenant.com', isVerified: true, ktp: '3201234567890124', phone: '08123456787', address: 'Tangerang', ktpPhoto: 'https://picsum.photos/400/250?random=ktp-ani', profilePhoto: '', bankName: 'Mandiri', bankAccountNumber: '987654321' }
-  ]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+// --- HELPER HOOK FOR PERSISTENCE ---
+function useStickyState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => {
+    const stickyValue = localStorage.getItem(key);
+    return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
+  });
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      const found = users.find(u => u.id === parsed.id);
-      if (found) setCurrentUser(found);
+    localStorage.setItem(key, JSON.stringify(value));
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
+const App: React.FC = () => {
+  // Use sticky state to persist data across reloads (simulating a database)
+  const [currentUser, setCurrentUser] = useStickyState<User | null>('tk_current_user', null);
+  const [companyInfo, setCompanyInfo] = useStickyState<CompanyInfo>('tk_company', INITIAL_COMPANY);
+  const [ads, setAds] = useStickyState<Advertisement[]>('tk_ads', INITIAL_ADS);
+  const [news, setNews] = useStickyState<NewsItem[]>('tk_news', INITIAL_NEWS);
+  const [shortVideos, setShortVideos] = useStickyState<ShortVideo[]>('tk_videos', INITIAL_VIDEOS);
+  const [koses, setKoses] = useStickyState<Kos[]>('tk_koses', INITIAL_KOSES);
+  const [bankAccounts, setBankAccounts] = useStickyState<BankAccount[]>('tk_banks', BANK_LIST);
+  const [messages, setMessages] = useStickyState<ChatMessage[]>('tk_messages', []);
+  const [users, setUsers] = useStickyState<User[]>('tk_users', INITIAL_USERS);
+  const [bookings, setBookings] = useStickyState<Booking[]>('tk_bookings', []);
+  const [transactions, setTransactions] = useStickyState<Transaction[]>('tk_transactions', []);
+
+  // Ensure current user session is valid
+  useEffect(() => {
+    if (currentUser) {
+      const freshUser = users.find(u => u.id === currentUser.id);
+      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
+        setCurrentUser(freshUser);
+      }
     }
-  }, []);
+  }, [users]);
 
   const login = (userData: User) => {
     setCurrentUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
   };
   
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('user');
   };
 
   const register = (userData: User) => {

@@ -1,4 +1,6 @@
 
+import { User, UserRole } from './types';
+
 export const FACILITIES = [
   "AC", "Kipas Angin", "Kasur Tanpa Ranjang", "Kasur Pakai Ranjang", 
   "Ranjang Tingkat", "Token Listrik", "PDAM", "Air Sumur", 
@@ -45,4 +47,10 @@ export const INDONESIA_BANKS = [
   "Bank Danamon", "Bank Permata", "Bank Panin", "Bank Mega", "Bank BTN",
   "Bank BSI (Syariah)", "Jenius (BTPN)", "Bank Jago", "Seabank", "Bank Muamalat",
   "Bank DKI", "Bank BJB", "Bank Jatim", "Bank Jateng"
+];
+
+export const INITIAL_USERS: User[] = [
+  { id: 'sa-1', username: 'admcip', password: 'Cip.123', role: UserRole.SUPER_ADMIN, fullName: 'Admin Master Cip', email: 'admin@travelkozt.com', isVerified: true, ktp: '1234567890123456', phone: '08123456789', address: 'Jakarta', ktpPhoto: '', profilePhoto: '' },
+  { id: 'u-1', username: 'budi', password: 'user123', role: UserRole.ADMIN_KOS, fullName: 'Budi Santoso', email: 'budi@owner.com', isVerified: true, ktp: '3201234567890123', phone: '08123456788', address: 'Jakarta Selatan', ktpPhoto: 'https://picsum.photos/400/250?random=ktp-budi', profilePhoto: '', bankName: 'BCA', bankAccountNumber: '123456789' },
+  { id: 'u-2', username: 'ani', password: 'user123', role: UserRole.USER, fullName: 'Ani Wijaya', email: 'ani@tenant.com', isVerified: true, ktp: '3201234567890124', phone: '08123456787', address: 'Tangerang', ktpPhoto: 'https://picsum.photos/400/250?random=ktp-ani', profilePhoto: '', bankName: 'Mandiri', bankAccountNumber: '987654321' }
 ];
