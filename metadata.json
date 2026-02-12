@@ -1,0 +1,8 @@
+{
+  "name": "TRAVEL KOZT",
+  "description": "Platform pencarian dan pemesanan kos modern layaknya Traveloka, dengan dashboard khusus untuk Super Admin, Pemilik Kos, dan Penyewa.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
