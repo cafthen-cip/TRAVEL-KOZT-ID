@@ -1,20 +1,18 @@
 
 import { Pool } from '@neondatabase/serverless';
 
-// Konfigurasi koneksi database Neon
-// Gunakan process.env.DATABASE_URL yang diset di Environment Variables Vercel
-
+// Pastikan Environment Variable DATABASE_URL sudah diatur di Vercel
 const connectionString = process.env.DATABASE_URL;
 
 export const pool = new Pool({ 
   connectionString,
   ssl: true,
-  max: 1, // Penting: Kurangi max connection untuk serverless agar tidak cepat limit
-  idleTimeoutMillis: 3000, // Timeout lebih cepat
+  max: 1, // Penting untuk serverless: membatasi koneksi aktif
+  idleTimeoutMillis: 3000, 
   connectionTimeoutMillis: 5000,
 });
 
-// Helper wrapper untuk query yang lebih bersih
+// Helper wrapper untuk query
 export const query = async (text: string, params?: any[]) => {
   const client = await pool.connect();
   try {
@@ -24,7 +22,6 @@ export const query = async (text: string, params?: any[]) => {
     console.error('Database Query Error:', error);
     throw error;
   } finally {
-    // Penting: Release client kembali ke pool secepat mungkin
     client.release();
   }
 };

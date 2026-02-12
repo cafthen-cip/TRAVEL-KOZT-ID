@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, LogOut, Home as HomeIcon, Menu, X, MessageSquare
 } from 'lucide-react';
-import { UserRole, User, Kos, Booking, Advertisement, BankAccount, KosCategory, ChatMessage, CompanyInfo, Transaction, RoomType, PriceType, NewsItem, ShortVideo } from './types';
+import { UserRole, User, Kos, Booking, Advertisement, BankAccount, ChatMessage, CompanyInfo, Transaction, RoomType, NewsItem, ShortVideo } from './types';
 import { INITIAL_ADS, BANK_LIST, INITIAL_USERS, INITIAL_KOSES, INITIAL_COMPANY, INITIAL_NEWS, INITIAL_VIDEOS } from './constants';
 import LandingPage from './pages/LandingPage';
 import SearchResults from './pages/SearchResults';
@@ -39,7 +39,7 @@ const Navbar: React.FC<{ user: User | null, logout: () => void, companyName: str
         <Link to="/" className={`text-sm font-bold hover:text-blue-500 transition-colors ${scrolled ? 'text-slate-600' : 'text-white/90'}`}>Beranda</Link>
         <Link to="/search" className={`text-sm font-bold hover:text-blue-500 transition-colors ${scrolled ? 'text-slate-600' : 'text-white/90'}`}>Jelajah Kos</Link>
         <Link to="/comments" className={`text-sm font-bold hover:text-blue-500 transition-colors ${scrolled ? 'text-slate-600' : 'text-white/90'}`}>Ulasan</Link>
-        <Link to="/about" className={`text-sm font-bold hover:text-blue-500 transition-colors ${scrolled ? 'text-slate-600' : 'text-white/90'}`}>Tentang Kami</Link>
+        <Link to="#" className={`text-sm font-bold hover:text-blue-500 transition-colors ${scrolled ? 'text-slate-600' : 'text-white/90'}`}>Tentang Kami</Link>
       </div>
 
       <div className="flex items-center gap-4">
@@ -163,26 +163,22 @@ const App: React.FC = () => {
     setKoses(prev => prev.map(k => k.id === updatedKos.id ? updatedKos : k));
   };
   
-  // Revised booking status (Without instant transaction logic)
   const updateBookingStatus = (bookingId: string, status: 'CONFIRMED' | 'REJECTED') => {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
   };
 
-  // Logic for Super Admin Disbursement
   const handleDisburseFunds = (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     const kos = koses.find(k => k.id === booking?.kosId);
     
     if (booking && kos && !booking.isDisbursed) {
-        // 1. Mark booking as disbursed
         setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, isDisbursed: true } : b));
 
-        // 2. Create Transaction for Owner (Bukti Transfer)
         const netToOwner = booking.basePrice - booking.platformFee;
         const ownerTransaction: Transaction = {
             id: `tr-out-${Date.now()}`,
             userId: kos.ownerId,
-            type: 'INCOME', // Income for owner
+            type: 'INCOME',
             amount: netToOwner,
             category: 'Pencairan Sewa',
             description: `Pencairan Sewa ${kos.name} - ${booking.roomId} (#${booking.id})`,
@@ -190,10 +186,9 @@ const App: React.FC = () => {
             referenceId: booking.id
         };
 
-        // 3. Create Transaction for Platform Fee (Realized Revenue)
         const feeTransaction: Transaction = {
             id: `tr-fee-${Date.now()}`,
-            userId: 'sa-1', // Super Admin ID
+            userId: 'sa-1',
             type: 'INCOME',
             amount: booking.platformFee,
             category: 'Service Fee',
@@ -203,7 +198,6 @@ const App: React.FC = () => {
             referenceId: booking.id
         };
 
-        // 4. Create Transaction for Tax (Tax Collected)
         const taxTransaction: Transaction = {
             id: `tr-tax-${Date.now()}`,
             userId: 'sa-1',
@@ -220,20 +214,15 @@ const App: React.FC = () => {
     }
   };
 
-  // Logic for Owner Manual Checkout
   const handleManualCheckout = (bookingId: string, reason: 'OWNER_FAULT' | 'TENANT_FAULT') => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     let refundAmount = 0;
-    // Calculate deduction based on rules
     if (reason === 'OWNER_FAULT') {
-        // Potong 3.5% (Platform fee) dari Total, sisanya dikembalikan
-        // asumsi "total uang masuk" adalah totalPrice
         const deduction = booking.totalPrice * 0.035;
         refundAmount = booking.totalPrice - deduction;
     } else {
-        // Potong 15% dari Total, sisanya dikembalikan
         const deduction = booking.totalPrice * 0.15;
         refundAmount = booking.totalPrice - deduction;
     }
