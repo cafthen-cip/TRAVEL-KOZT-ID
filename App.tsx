@@ -260,45 +260,88 @@ const App: React.FC = () => {
     setKoses(prev => prev.map(k => k.id === updatedKos.id ? updatedKos : k));
   };
   
+  // Revised booking status (Without instant transaction logic)
   const updateBookingStatus = (bookingId: string, status: 'CONFIRMED' | 'REJECTED') => {
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
+  };
+
+  // Logic for Super Admin Disbursement
+  const handleDisburseFunds = (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     const kos = koses.find(k => k.id === booking?.kosId);
     
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status } : b));
-    
-    if (status === 'CONFIRMED' && booking && kos) {
-      const basePrice = booking.basePrice;
-      const platformFee = booking.platformFee;
-      const netToOwner = basePrice - platformFee;
+    if (booking && kos && !booking.isDisbursed) {
+        // 1. Mark booking as disbursed
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, isDisbursed: true } : b));
 
-      const ownerIncome: Transaction = {
-        id: `inc-own-${Date.now()}`,
-        userId: kos.ownerId, 
-        type: 'INCOME',
-        amount: netToOwner, 
-        category: 'Pencairan Sewa',
-        description: `Sewa ${kos.name} - ${booking.roomId} (Net)`,
-        date: new Date().toISOString().split('T')[0],
-        referenceId: booking.id
-      };
+        // 2. Create Transaction for Owner (Bukti Transfer)
+        const netToOwner = booking.basePrice - booking.platformFee;
+        const ownerTransaction: Transaction = {
+            id: `tr-out-${Date.now()}`,
+            userId: kos.ownerId,
+            type: 'INCOME', // Income for owner
+            amount: netToOwner,
+            category: 'Pencairan Sewa',
+            description: `Pencairan Sewa ${kos.name} - ${booking.roomId} (#${booking.id})`,
+            date: new Date().toISOString().split('T')[0],
+            referenceId: booking.id
+        };
 
-      const platformIncome: Transaction = {
-        id: `inc-sa-${Date.now()}`,
-        userId: 'sa-1', 
-        type: 'INCOME',
-        amount: platformFee,
-        category: 'Service Fee',
-        description: `Fee Layanan - ${kos.name} (#${booking.id})`,
-        date: new Date().toISOString().split('T')[0],
-        referenceId: booking.id
-      };
+        // 3. Create Transaction for Platform Fee (Realized Revenue)
+        const feeTransaction: Transaction = {
+            id: `tr-fee-${Date.now()}`,
+            userId: 'sa-1', // Super Admin ID
+            type: 'INCOME',
+            amount: booking.platformFee,
+            category: 'Service Fee',
+            description: `Fee Layanan (#${booking.id})`,
+            date: new Date().toISOString().split('T')[0],
+            source: 'CASH_NET',
+            referenceId: booking.id
+        };
 
-      setTransactions(prev => [...prev, ownerIncome, platformIncome]);
+        // 4. Create Transaction for Tax (Tax Collected)
+        const taxTransaction: Transaction = {
+            id: `tr-tax-${Date.now()}`,
+            userId: 'sa-1',
+            type: 'INCOME',
+            amount: booking.taxAmount,
+            category: 'Pajak (PPN/PB1)',
+            description: `Pajak Transaksi (#${booking.id})`,
+            date: new Date().toISOString().split('T')[0],
+            source: 'TAX_CASH',
+            referenceId: booking.id
+        };
+
+        setTransactions(prev => [...prev, ownerTransaction, feeTransaction, taxTransaction]);
     }
   };
 
-  const handleManualCheckout = (bookingId: string) => {
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'CHECKED_OUT', isCheckedOut: true } : b));
+  // Logic for Owner Manual Checkout
+  const handleManualCheckout = (bookingId: string, reason: 'OWNER_FAULT' | 'TENANT_FAULT') => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    let refundAmount = 0;
+    // Calculate deduction based on rules
+    if (reason === 'OWNER_FAULT') {
+        // Potong 3.5% (Platform fee) dari Total, sisanya dikembalikan
+        // asumsi "total uang masuk" adalah totalPrice
+        const deduction = booking.totalPrice * 0.035;
+        refundAmount = booking.totalPrice - deduction;
+    } else {
+        // Potong 15% dari Total, sisanya dikembalikan
+        const deduction = booking.totalPrice * 0.15;
+        refundAmount = booking.totalPrice - deduction;
+    }
+
+    setBookings(prev => prev.map(b => b.id === bookingId ? { 
+        ...b, 
+        status: 'CHECKED_OUT', 
+        isCheckedOut: true,
+        checkoutReason: reason,
+        refundAmount: refundAmount
+    } : b));
   };
 
   const handleEditBookingRoom = (bookingId: string, newRoomId: string, newRoomType: RoomType) => {
@@ -317,6 +360,8 @@ const App: React.FC = () => {
   const createBooking = (booking: Booking) => setBookings(prev => [...prev, booking]);
 
   const addTransaction = (t: Transaction) => setTransactions(prev => [...prev, t]);
+  
+  const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
 
   const sendMessage = (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => {
     const newMsg: ChatMessage = {
@@ -366,7 +411,9 @@ const App: React.FC = () => {
                 onSendMessage={sendMessage}
                 transactions={transactions}
                 onAddTransaction={addTransaction}
+                onDeleteTransaction={deleteTransaction}
                 bookings={bookings}
+                onDisburseFunds={handleDisburseFunds}
               /> : <Navigate to="/login" />
             } />
             

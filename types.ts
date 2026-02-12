@@ -133,8 +133,11 @@ export interface Booking {
   platformFee: number;
   totalPrice: number;
   isCheckedOut?: boolean;
-  ownerRevenue?: number; // Calculated field for ease
-  adminRevenue?: number; // Calculated field for ease
+  isDisbursed?: boolean; // New: Status uang cair ke owner
+  checkoutReason?: string; // New: Alasan checkout manual
+  refundAmount?: number; // New: Dana dikembalikan ke user
+  ownerRevenue?: number; 
+  adminRevenue?: number; 
 }
 
 export interface BankAccount {
