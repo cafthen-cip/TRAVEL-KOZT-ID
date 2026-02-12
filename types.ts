@@ -168,3 +168,9 @@ export interface Transaction {
   referenceId?: string;
   source?: 'CASH_NET' | 'PERSONAL' | 'TAX_CASH'; // New field for budgeting
 }
+
+export interface Comment {
+  id: number;
+  comment: string;
+  created_at: string;
+}
