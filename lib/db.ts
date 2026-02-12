@@ -2,17 +2,16 @@
 import { Pool } from '@neondatabase/serverless';
 
 // Konfigurasi koneksi database Neon
-// PENTING: Gunakan library ini hanya di dalam Vercel Serverless Functions (folder /api), 
-// jangan diimpor langsung ke komponen React (client-side) karena alasan keamanan.
+// Gunakan process.env.DATABASE_URL yang diset di Environment Variables Vercel
 
 const connectionString = process.env.DATABASE_URL;
 
 export const pool = new Pool({ 
   connectionString,
   ssl: true,
-  max: 20, // Set maximum pool size
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 1, // Penting: Kurangi max connection untuk serverless agar tidak cepat limit
+  idleTimeoutMillis: 3000, // Timeout lebih cepat
+  connectionTimeoutMillis: 5000,
 });
 
 // Helper wrapper untuk query yang lebih bersih
@@ -25,6 +24,7 @@ export const query = async (text: string, params?: any[]) => {
     console.error('Database Query Error:', error);
     throw error;
   } finally {
+    // Penting: Release client kembali ke pool secepat mungkin
     client.release();
   }
 };
