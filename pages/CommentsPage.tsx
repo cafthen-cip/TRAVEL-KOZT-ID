@@ -1,56 +1,29 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MessageSquare, Send, Loader2, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Comment } from '../types';
 
-const CommentsPage: React.FC = () => {
-  const [comments, setComments] = useState<Comment[]>([]);
+interface CommentsPageProps {
+  comments: Comment[];
+  onAddComment: (text: string) => void;
+}
+
+const CommentsPage: React.FC<CommentsPageProps> = ({ comments, onAddComment }) => {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(true);
 
-  const fetchComments = async () => {
-    try {
-      const res = await fetch('/api/comments');
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch comments', error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchComments();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
     setLoading(true);
-    try {
-      const res = await fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: newComment })
-      });
-      if (res.ok) {
+    // Simulate network delay
+    setTimeout(() => {
+        onAddComment(newComment);
         setNewComment('');
-        fetchComments();
-      } else {
-        alert('Gagal mengirim komentar');
-      }
-    } catch (error) {
-      console.error('Error posting comment', error);
-      alert('Terjadi kesalahan koneksi');
-    } finally {
-      setLoading(false);
-    }
+        setLoading(false);
+    }, 500);
   };
 
   return (
@@ -86,12 +59,7 @@ const CommentsPage: React.FC = () => {
 
         <div className="space-y-4">
           <h3 className="text-xl font-black text-slate-800 mb-4 px-2">Komentar Terbaru</h3>
-          {refreshing ? (
-            <div className="text-center py-10">
-                <Loader2 className="animate-spin mx-auto text-blue-600 mb-2"/>
-                <p className="text-slate-400 font-bold">Memuat komentar...</p>
-            </div>
-          ) : comments.length === 0 ? (
+          {comments.length === 0 ? (
             <div className="text-center py-10 bg-white rounded-[2rem] border border-slate-100 border-dashed">
                 <p className="text-slate-400 font-bold">Belum ada komentar. Jadilah yang pertama!</p>
             </div>

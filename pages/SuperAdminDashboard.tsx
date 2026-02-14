@@ -1,14 +1,11 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
-  Users, TrendingUp, CheckCircle, Clock, 
-  MessageSquare, Plus, Edit, Trash2, CreditCard, 
-  Image as ImageIcon, MonitorPlay, Save, Bell, Shield, ShieldCheck, Eye, Send, Upload, X, MapPin, Globe, LayoutGrid, User as UserIcon, Settings, Menu, Info, Building,
-  Zap, FileText, AlertCircle, PieChart as PieChartIcon, DollarSign, Activity, Wallet, Video, Link as LinkIcon, Paperclip, Lock, Phone, Mail, Newspaper, PlayCircle, Mic, QrCode, ArrowRightLeft, ArrowDownCircle, ArrowUpCircle, Calendar, Youtube, Facebook, Instagram, Twitter, Home, SendHorizontal, Search, Filter, Database, Server, RefreshCw
+  Users, TrendingUp, CheckCircle, 
+  MessageSquare, Edit, Trash2, CreditCard, 
+  Shield, Wallet, RefreshCw, Search, Building, DollarSign, Clock
 } from 'lucide-react';
-import { User, Advertisement, BankAccount, Kos, ChatMessage, UserRole, CompanyInfo, Transaction, Booking, NewsItem, ShortVideo, KosCategory, RoomType, Comment } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
-import { INDONESIA_BANKS } from '../constants';
+import { User, Advertisement, BankAccount, Kos, ChatMessage, UserRole, CompanyInfo, Transaction, Booking, NewsItem, ShortVideo, Comment } from '../types';
+import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface SuperAdminDashboardProps {
   user: User;
@@ -40,14 +37,16 @@ interface SuperAdminDashboardProps {
   onDeleteTransaction: (id: string) => void;
   bookings: Booking[];
   onDisburseFunds: (bookingId: string) => void;
+  comments: Comment[];
+  onDeleteComment: (id: number) => void;
 }
 
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ 
   user, users, koses, ads, news, videos, bankAccounts, companyInfo, onUpdateCompany, onUpdateUser, onDeleteUser,
   messages, onSendMessage, onVerifyUser, onVerifyKos, onUpdateKos, onAddAd, onDeleteAd, onAddNews, onDeleteNews, onAddVideo, onDeleteVideo, onAddBank, onDeleteBank,
-  transactions, onAddTransaction, onDeleteTransaction, bookings, onDisburseFunds
+  transactions, onAddTransaction, bookings, onDisburseFunds, comments, onDeleteComment
 }) => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'finance' | 'users' | 'koses' | 'payments' | 'chat' | 'comments' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'finance' | 'users' | 'koses' | 'payments' | 'chat' | 'comments'>('stats');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // -- STATES FOR ACTIONS & FILTERS --
@@ -64,9 +63,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   const [selectedDisburseBooking, setSelectedDisburseBooking] = useState<Booking | null>(null);
 
   const [selectedChatUser, setSelectedChatUser] = useState<string | null>(null);
-  const [chatInput, setChatInput] = useState('');
   const [chatImage, setChatImage] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: 'Operasional', source: 'CASH_NET' as 'CASH_NET' | 'PERSONAL' | 'TAX_CASH' });
@@ -77,64 +74,9 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   
   const [newBank, setNewBank] = useState({ bankName: 'Bank BCA', accountNumber: '', accountHolder: '', qrisImage: '' });
 
-  // Database Status State
-  const [dbStatus, setDbStatus] = useState<'IDLE' | 'CHECKING' | 'ONLINE' | 'ERROR'>('IDLE');
-  const [dbMessage, setDbMessage] = useState('');
-
-  // Comments State
-  const [adminComments, setAdminComments] = useState<Comment[]>([]);
-  const [loadingComments, setLoadingComments] = useState(false);
-
-  // Refs
-  const heroFileRef = useRef<HTMLInputElement>(null);
-  const heroSide1Ref = useRef<HTMLInputElement>(null);
-  const heroSide2Ref = useRef<HTMLInputElement>(null);
-  const adFileRef = useRef<HTMLInputElement>(null);
-  const newsFileRef = useRef<HTMLInputElement>(null);
-  const videoThumbRef = useRef<HTMLInputElement>(null);
-  const qrisFileRef = useRef<HTMLInputElement>(null);
-  const chatFileRef = useRef<HTMLInputElement>(null);
-  const userProfileFileRef = useRef<HTMLInputElement>(null);
-  const userKtpFileRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     if (chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedChatUser, chatImage]);
-
-  useEffect(() => {
-    if (activeTab === 'comments') {
-        fetchAdminComments();
-    }
-  }, [activeTab]);
-
-  const fetchAdminComments = async () => {
-    setLoadingComments(true);
-    try {
-        const res = await fetch('/api/comments');
-        if (res.ok) {
-            const data = await res.json();
-            setAdminComments(data);
-        }
-    } catch (e) {
-        console.error("Failed fetch comments", e);
-    } finally {
-        setLoadingComments(false);
-    }
-  };
-
-  const deleteAdminComment = async (id: number) => {
-      if(!confirm("Hapus komentar ini secara permanen?")) return;
-      try {
-          const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' });
-          if(res.ok) {
-              setAdminComments(prev => prev.filter(c => c.id !== id));
-          } else {
-              alert("Gagal menghapus komentar.");
-          }
-      } catch (e) {
-          alert("Error koneksi saat menghapus.");
-      }
-  };
 
   // --- LOGIC PERHITUNGAN KEUANGAN ---
   const platformFeeInflow = transactions
@@ -164,35 +106,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     .filter(t => t.userId !== user.id && t.type === 'INCOME' && t.category === 'Pencairan Sewa')
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const financeChartData = [
-    { name: 'Fee Masuk', amount: platformFeeInflow, fill: '#16a34a' },
-    { name: 'Pajak Held', amount: totalTaxHeld, fill: '#f97316' },
-    { name: 'Disetor Owner', amount: totalDisbursedToOwners, fill: '#8b5cf6' },
-    { name: 'Ops Expense', amount: operationalExpenses, fill: '#dc2626' }
-  ];
-
   // --- LOGIC DATA LAINNYA ---
-  
-  const activeTenants = useMemo(() => {
-     // Ensure we get confirmed or checked out bookings
-     return bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'CHECKED_OUT').map(b => {
-        const tenant = users.find(u => u.id === b.userId);
-        const kos = koses.find(k => k.id === b.kosId);
-        const totalStock = kos?.rooms.reduce((acc, r) => acc + r.stock, 0) || 0;
-        return {
-           bookingId: b.id, 
-           tenantName: tenant?.fullName || 'Unknown', 
-           kosName: kos?.name || 'Unknown',
-           checkIn: b.checkIn, 
-           checkOut: b.checkOut, 
-           stockRemaining: totalStock,
-           totalTransferred: b.isDisbursed ? (b.basePrice - b.platformFee) : 0, 
-           status: b.status, 
-           isDisbursed: b.isDisbursed,
-           originalBooking: b // IMPORTANT: Passing the full object for actions
-        };
-     });
-  }, [bookings, users, koses, transactions]);
 
   const filteredUsers = users.filter(u => 
     u.fullName.toLowerCase().includes(searchUser.toLowerCase()) || 
@@ -214,57 +128,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     return Array.from(partnerIds);
   }, [messages, user.id]);
 
-  // Data helpers for User Edit
-  const getUserKoses = (userId: string) => koses.filter(k => k.ownerId === userId);
-
   // --- ACTIONS HANDLERS ---
-
-  const checkDbStatus = async () => {
-    setDbStatus('CHECKING');
-    try {
-      const res = await fetch('/api/status');
-      const data = await res.json();
-      if(res.ok) {
-        setDbStatus('ONLINE');
-        setDbMessage(`Terhubung: Postgres v${data.db_version}`);
-      } else {
-        setDbStatus('ERROR');
-        setDbMessage(data.message || 'Error connection');
-      }
-    } catch (e: any) {
-      setDbStatus('ERROR');
-      setDbMessage(e.message);
-    }
-  };
-
-  const seedDatabase = async () => {
-    if(!confirm("Yakin ingin mengisi database dengan Data Awal? Ini akan menyalin data dari constants.tsx ke database Neon.")) return;
-    setDbStatus('CHECKING');
-    try {
-      const res = await fetch('/api/seed');
-      const data = await res.json();
-      if(res.ok) {
-        setDbStatus('ONLINE');
-        alert("Database berhasil di-seed!");
-        setDbMessage("Seeding Sukses!");
-      } else {
-        setDbStatus('ERROR');
-        setDbMessage(data.error);
-        alert("Gagal seed: " + data.error);
-      }
-    } catch (e: any) {
-      setDbStatus('ERROR');
-      setDbMessage(e.message);
-    }
-  };
-
-  const handleConfirmDisburse = () => {
-      if (selectedDisburseBooking) {
-          onDisburseFunds(selectedDisburseBooking.id);
-          setSelectedDisburseBooking(null);
-          alert("Dana berhasil dikirim ke pemilik kos. Transaksi tercatat.");
-      }
-  };
 
   const handleAddExpense = () => {
     if (!newExpense.description || !newExpense.amount) return;
@@ -280,25 +144,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     });
     setNewExpense({ description: '', amount: '', category: 'Operasional', source: 'CASH_NET' });
     alert('Pengeluaran berhasil dicatat.');
-  };
-
-  const handleSaveUser = () => {
-      if(editUserForm) {
-          onUpdateUser(editUserForm);
-          setEditUserForm(null);
-          setIsEditingUser(false);
-          alert('Data pengguna berhasil disimpan.');
-      }
-  };
-
-  const handleSaveKos = () => {
-      if(editKosForm && onUpdateKos) {
-          onUpdateKos(editKosForm);
-          setEditKosForm(null);
-          setIsEditingKos(false);
-          if(selectedKos && selectedKos.id === editKosForm.id) setSelectedKos(editKosForm); 
-          alert('Data properti berhasil diperbarui.');
-      }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -374,22 +219,17 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           <NavItem id="payments" label="Metode Bayar" icon={CreditCard} />
           <NavItem id="chat" label="Pesan Masuk" icon={MessageSquare} />
           <NavItem id="comments" label="Moderasi Ulasan" icon={MessageSquare} />
-          <NavItem id="settings" label="CMS & Cloud DB" icon={Settings} />
         </nav>
       </aside>
 
       <main className="flex-1 p-6 md:p-12 overflow-y-auto bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-12">
-            <h1 className="text-4xl font-black text-slate-900 capitalize tracking-tight">{activeTab === 'settings' ? 'CMS & Cloud DB' : activeTab === 'comments' ? 'Moderasi Komentar' : activeTab.replace('-', ' ')}</h1>
-            <button className="md:hidden p-3 bg-white shadow-md rounded-2xl" onClick={() => setIsSidebarOpen(true)}><Menu/></button>
+            <h1 className="text-4xl font-black text-slate-900 capitalize tracking-tight">{activeTab.replace('-', ' ')}</h1>
           </div>
 
-          {/* ... (Overview, Finance, Users, Koses, Payments, Chat, Settings logic - unchanged) ... */}
           {activeTab === 'stats' && (
              <div className="space-y-12 animate-in fade-in">
-                 {/* ... (Overview Content) ... */}
-                 {/* Top Cards */}
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex items-center gap-6">
                         <div className="p-5 bg-blue-50 text-blue-600 rounded-3xl"><Users size={32}/></div>
@@ -408,16 +248,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                         <div><p className="text-xs font-black text-white/50 uppercase tracking-widest">Kas Operasional</p><h3 className="text-3xl font-black">Rp {netProfit.toLocaleString()}</h3></div>
                     </div>
                  </div>
-                 {/* ... Rest of stats content ... */}
              </div>
           )}
           
-          {/* ... Finance, Users, Koses, Payments tabs ... */}
           {activeTab === 'finance' && (
               <div className="space-y-12 animate-in fade-in">
-                 {/* ... Finance content (same as before) ... */}
-                 {/* Included for brevity, code is preserved via React logic unless explicitly changed here */}
-                 {/* Finance Summary Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <div className="bg-white p-6 rounded-[2.5rem] shadow-lg border border-slate-100">
                           <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-2">Kas Operasional (Net)</p>
@@ -438,13 +273,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                           <h3 className="text-2xl font-black text-slate-900">Rp {operationalExpenses.toLocaleString()}</h3>
                       </div>
                   </div>
-                  {/* ... Rest of finance ... */}
               </div>
           )}
 
           {activeTab === 'users' && (
             <div className="bg-white rounded-[4rem] border border-slate-100 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5">
-              {/* Users table content (same as before) */}
               <div className="p-8 border-b bg-slate-50/50 flex flex-col md:flex-row justify-between items-center gap-4">
                  <div>
                     <h4 className="font-black text-slate-800">Master Data User & Pemilik</h4>
@@ -504,21 +337,16 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           )}
 
           {activeTab === 'koses' && (
-             // ... Koses Content ...
              <div className="space-y-8 animate-in fade-in">
-                 {/* Koses content here */}
                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex gap-2">
                         <button onClick={() => setKosFilter('ALL')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${kosFilter === 'ALL' ? 'bg-slate-900 text-white' : 'bg-white text-slate-500'}`}>Semua Properti</button>
                         <button onClick={() => setKosFilter('PENDING')} className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${kosFilter === 'PENDING' ? 'bg-orange-500 text-white' : 'bg-white text-orange-500'}`}>Perlu Verifikasi</button>
                     </div>
-                    {/* ... */}
                  </div>
-                 {/* ... Cards ... */}
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                      {filteredKoses.map(kos => (
                         <div key={kos.id} className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-100 group">
-                             {/* ... Kos Card UI ... */}
                              <div className="h-48 relative">
                                 <img src={kos.ownerPhoto} className="w-full h-full object-cover" />
                                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase">{kos.isVerified ? <span className="text-green-600">Verified</span> : <span className="text-orange-500">Pending</span>}</div>
@@ -536,7 +364,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           )}
 
           {activeTab === 'payments' && (
-             // ... Payments Content ...
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-in fade-in">
                  <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
                      <h4 className="font-black text-xl mb-6">Metode Pembayaran Aktif</h4>
@@ -555,14 +382,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                          ))}
                      </div>
                  </div>
-                 {/* ... Add Bank Form ... */}
              </div>
           )}
 
           {activeTab === 'chat' && (
-             // ... Chat Content ...
              <div className="max-w-5xl mx-auto bg-white rounded-[3rem] shadow-2xl border flex flex-col h-[700px] overflow-hidden animate-in fade-in">
-                 {/* Chat UI */}
                  <div className="p-6 border-b bg-slate-50 flex items-center gap-4 overflow-x-auto">
                      {conversationPartners.map(partnerId => (
                          <button key={partnerId} onClick={() => setSelectedChatUser(partnerId)} className={`flex items-center gap-3 px-6 py-3 rounded-full border transition-all shrink-0 ${selectedChatUser === partnerId ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'}`}>
@@ -579,7 +403,6 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                          </div>
                      ))}
                  </div>
-                 {/* Chat Input */}
              </div>
           )}
 
@@ -588,11 +411,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                   <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100">
                       <div className="flex justify-between items-center mb-6">
                           <h4 className="font-black text-xl flex items-center gap-2">
-                              <MessageSquare className="text-blue-600"/> Data Komentar (SELECT * FROM comments)
+                              <MessageSquare className="text-blue-600"/> Data Komentar (Local Data)
                           </h4>
-                          <button onClick={fetchAdminComments} className="p-3 bg-slate-100 rounded-full hover:bg-slate-200 text-slate-500 transition-all">
-                              <RefreshCw size={20} className={loadingComments ? 'animate-spin' : ''}/>
-                          </button>
                       </div>
                       
                       <div className="overflow-x-auto">
@@ -606,10 +426,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                                   </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
-                                  {adminComments.length === 0 && (
+                                  {comments.length === 0 && (
                                       <tr><td colSpan={4} className="text-center py-10 text-slate-400 font-bold">Tidak ada komentar ditemukan.</td></tr>
                                   )}
-                                  {adminComments.map(comment => (
+                                  {comments.map(comment => (
                                       <tr key={comment.id} className="hover:bg-slate-50 transition-colors">
                                           <td className="px-6 py-4 text-xs font-mono text-slate-400">#{comment.id}</td>
                                           <td className="px-6 py-4 text-xs font-bold text-slate-500">
@@ -618,7 +438,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                                           <td className="px-6 py-4 font-bold text-slate-800">{comment.comment}</td>
                                           <td className="px-6 py-4 text-right">
                                               <button 
-                                                  onClick={() => deleteAdminComment(comment.id)} 
+                                                  onClick={() => { if(confirm('Hapus komentar ini?')) onDeleteComment(comment.id) }} 
                                                   className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" 
                                                   title="Hapus Komentar"
                                               >
@@ -633,43 +453,8 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                   </div>
               </div>
           )}
-
-          {activeTab === 'settings' && (
-             <div className="space-y-12 animate-in fade-in">
-                 {/* Database Control Panel */}
-                 <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none"><Server size={120}/></div>
-                     <h4 className="font-black text-xl mb-6 flex items-center gap-2 text-slate-900"><Database className="text-blue-600"/> Database Cloud (Neon)</h4>
-                     <p className="text-slate-500 mb-8 max-w-2xl leading-relaxed">Kelola koneksi database serverless Anda. Gunakan fitur ini untuk memindahkan data lokal (demo) ke database cloud Neon agar aplikasi siap untuk production.</p>
-                     
-                     <div className="flex flex-col md:flex-row gap-6">
-                        <div className="flex-1 space-y-4">
-                           <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                 <div className={`w-3 h-3 rounded-full ${dbStatus === 'ONLINE' ? 'bg-green-500' : dbStatus === 'ERROR' ? 'bg-red-500' : 'bg-slate-300'}`}></div>
-                                 <div>
-                                    <p className="font-black text-sm text-slate-800">Status Koneksi</p>
-                                    <p className="text-xs text-slate-500 font-bold">{dbStatus === 'IDLE' ? 'Belum diperiksa' : dbMessage}</p>
-                                 </div>
-                              </div>
-                              <button onClick={checkDbStatus} className="px-4 py-2 bg-white border rounded-xl text-xs font-bold hover:bg-slate-50 transition-all">Check Status</button>
-                           </div>
-                        </div>
-                        <div className="flex-1 space-y-4">
-                           <button onClick={seedDatabase} disabled={dbStatus === 'CHECKING'} className="w-full h-full min-h-[80px] px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-50">
-                              {dbStatus === 'CHECKING' ? 'Memproses...' : <><Database size={18}/> SEED INITIAL DATA</>}
-                           </button>
-                        </div>
-                     </div>
-                 </div>
-                 {/* Rest of settings... */}
-             </div>
-          )}
         </div>
       </main>
-      
-      {/* Modals for Disbursement, Edit Kos, Edit User (kept same as original) */}
-      {/* ... (Existing Modal code) ... */}
     </div>
   );
 };

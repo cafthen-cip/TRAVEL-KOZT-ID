@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { 
-  User as UserIcon, Clock, CreditCard, 
-  MapPin, ShieldCheck, Phone, Mail, Edit, Save, Upload, FileText, Download, X, ImageIcon, Calendar, Printer, Shield, CheckCircle
+  User as UserIcon, Clock, 
+  MapPin, ShieldCheck, Edit, Upload, FileText, X, ImageIcon, Calendar, Printer, Shield, CheckCircle
 } from 'lucide-react';
 import { User, Booking, Kos, BankAccount } from '../types';
 
