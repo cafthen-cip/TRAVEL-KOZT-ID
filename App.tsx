@@ -355,7 +355,7 @@ const App: React.FC = () => {
     }
 
     const updates = { 
-        status: 'CHECKED_OUT', 
+        status: 'CHECKED_OUT' as const, // Explicit cast to match Union Type
         isCheckedOut: true,
         checkoutReason: reason,
         refundAmount: refundAmount
