@@ -354,15 +354,15 @@ const App: React.FC = () => {
         refundAmount = booking.totalPrice - deduction;
     }
 
-    const updates = { 
-        status: 'CHECKED_OUT' as const, // Explicit cast to match Union Type
+    const updates: Partial<Booking> = { 
+        status: 'CHECKED_OUT', 
         isCheckedOut: true,
         checkoutReason: reason,
         refundAmount: refundAmount
     };
     await supabase.from('bookings').update(updates).eq('id', bookingId);
 
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...updates } : b));
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...updates } as Booking : b));
   };
 
   const handleEditBookingRoom = async (bookingId: string, newRoomId: string, newRoomType: RoomType) => {
